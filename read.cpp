@@ -1,8 +1,11 @@
 #include <stdio.h>
 #include <pcap.h>
 
+#define LINE_LENGTH 16
+
 pcap_t *open_file(char *);
-void read_loop(u_char *, const struct pcap_pkthdr  *, const u_char *);
+void read_packet(const struct pcap_pkthdr *, const u_char *);
+const char *timestamp(struct timeval);
 
 int main(int argc, char **argv) {
 	if (argc != 2) {
@@ -14,8 +17,15 @@ int main(int argc, char **argv) {
 	pcap_t *fp = open_file(argv[1]);
 	if (fp == NULL) return -1;
 
-	// call the pcap-loop-dispatcher to loop through the input file to read each packet
-	pcap_loop(fp, 0, read_loop, NULL);
+	// read through all of the packets in the file
+	int packet_count = 0;
+	const unsigned char *packet;
+	struct pcap_pkthdr header;
+	while ((packet = pcap_next(fp, &header)) != NULL) {
+		read_packet(&header, packet);
+		packet_count++;
+	}
+	printf("Total Packets: %d", packet_count);
 
 	// close the file
 	pcap_close(fp);
@@ -33,7 +43,29 @@ pcap_t *open_file(char *filename) {
 	return fp;
 }
 
-void read_loop(u_char *unused, const struct pcap_pkthdr *header, const u_char *packet_data) {
-	// print initial packet info
-	printf("Packet: %ld:%ld (len: %ld)\n", header->ts.tv_sec, header->ts.tv_usec, header->len);
+void read_packet(const struct pcap_pkthdr *header, const u_char *packet) {
+	// print packet info
+	printf("Packet: %s (length: %ld bytes)\n", timestamp(header->ts), header->len);
+
+	// print the packet
+	int eol = LINE_LENGTH - 1;
+	for (int i = 0; i < header->caplen; i++) {
+		printf("%.2x ", packet[i]);
+		if ((i % LINE_LENGTH) == eol) printf("\n");
+	}
+	
+	printf("\n\n");	
+}
+
+const char *timestamp(struct timeval tv) {
+	static char timestamp_buffer[64], full_buffer[64];
+
+	// the .tv_sec is the timestamp portion; convert that to local-time and make printable
+	time_t time = tv.tv_sec;
+	struct tm *timeTm = localtime(&time);
+	strftime(timestamp_buffer, sizeof(timestamp_buffer), "%Y-%m-%d %H:%M:%S", timeTm);
+
+	// add the milliseconds (.tv_usec) and return
+	_snprintf(full_buffer, sizeof(full_buffer), "%s.%03d", timestamp_buffer, (tv.tv_usec / 1000) + 1);
+	return full_buffer;
 }
