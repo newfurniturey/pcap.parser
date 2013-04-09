@@ -1,11 +1,8 @@
 #include <stdio.h>
 #include <pcap.h>
+#include "read.h"
+#include "packet.h"
 
-#define LINE_LENGTH 16
-
-pcap_t *open_file(char *);
-void read_packet(const struct pcap_pkthdr *, const u_char *);
-const char *timestamp(struct timeval);
 
 int main(int argc, char **argv) {
 	if (argc != 2) {
@@ -53,11 +50,13 @@ void read_packet(const struct pcap_pkthdr *header, const u_char *packet) {
 		printf("%.2x ", packet[i]);
 
 		if ((i % LINE_LENGTH) == eol) {
+			// do an ascii-dump of the data too
 			printf("   ");
 			for (int j = (i - eol); j <= i; j++) printf("%.2c ", isprint(packet[j]) ? packet[j] : '.');
 			printf("\n");
 		}
 	}
+	// if the packet doesn't end on an interval of LINE_LENGTH, don't forget to print the rest of the ascii-data
 	if ((i % LINE_LENGTH) != 0) {
 		printf("%*s" "%s", (LINE_LENGTH - (i % LINE_LENGTH)) * 3, " ", "   ");
 		for (int j = (i - eol); j <= i; j++) printf("%.2c ", isprint(packet[j]) ? packet[j] : '.');
