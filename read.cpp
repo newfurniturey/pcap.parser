@@ -44,8 +44,22 @@ void read_packet(const struct pcap_pkthdr *header, const u_char *packet) {
 	// print packet info
 	printf("Packet: %s (length: %ld bytes)\n", timestamp(header->ts), header->len);
 
+	// get the thernet, ip and tcp headers
+	ethernet_header *ethernet = (struct ethernet_header*)packet;
+	ip_header *ip = (struct ip_header*)(packet + ETHER_SIZE);
+
+	u_int ip_size = (ip->ver_ihl & 0x0f) * 4;
+	tcp_header *tcp = (struct tcp_header*)(packet + ETHER_SIZE + ip_size);
+
+	// determine the source/destination ip:port
+	char sourceIP[INET_ADDRSTRLEN];
+	char destIP[INET_ADDRSTRLEN];
+	inet_ntop(AF_INET, &ip->ip_src, sourceIP, sizeof(sourceIP));
+	inet_ntop(AF_INET, &ip->ip_dst, destIP, sizeof(destIP));
+	printf("Source: %s:%d    Destination: %s:%d\n", sourceIP, ntohs(tcp->sport), destIP, ntohs(tcp->dport));
+
 	// print the packet
-	int i = 0, eol = LINE_LENGTH - 1;
+	u_int i = 0, eol = LINE_LENGTH - 1;
 	for (; i < header->caplen; i++) {
 		printf("%.2x ", packet[i]);
 
