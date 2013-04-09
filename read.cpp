@@ -48,12 +48,20 @@ void read_packet(const struct pcap_pkthdr *header, const u_char *packet) {
 	printf("Packet: %s (length: %ld bytes)\n", timestamp(header->ts), header->len);
 
 	// print the packet
-	int eol = LINE_LENGTH - 1;
-	for (int i = 0; i < header->caplen; i++) {
+	int i = 0, eol = LINE_LENGTH - 1;
+	for (; i < header->caplen; i++) {
 		printf("%.2x ", packet[i]);
-		if ((i % LINE_LENGTH) == eol) printf("\n");
+
+		if ((i % LINE_LENGTH) == eol) {
+			printf("   ");
+			for (int j = (i - eol); j <= i; j++) printf("%.2c ", isprint(packet[j]) ? packet[j] : '.');
+			printf("\n");
+		}
 	}
-	
+	if ((i % LINE_LENGTH) != 0) {
+		printf("%*s" "%s", (LINE_LENGTH - (i % LINE_LENGTH)) * 3, " ", "   ");
+		for (int j = (i - eol); j <= i; j++) printf("%.2c ", isprint(packet[j]) ? packet[j] : '.');
+	}
 	printf("\n\n");	
 }
 
